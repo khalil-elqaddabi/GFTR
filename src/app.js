@@ -4,12 +4,14 @@ const authRoutes = require("./routes/authRoutes");
 const testRoutes = require("./routes/testRoutes");
 const camionRoutes = require("./routes/camionRoutes");
 const remorqueRoutes = require("./routes/remorqueRoutes");
+const pneuRoutes = require("./routes/pneuRoutes");
 
 const app = express()
 app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/camions", camionRoutes);
 app.use("/api/remorques", remorqueRoutes);
+app.use("/api/pneus", pneuRoutes);
 
 app.get("/", (req , res) => {
     res.json({
