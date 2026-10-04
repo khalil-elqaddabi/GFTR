@@ -14,6 +14,7 @@ app.use("/api/remorques", remorqueRoutes);
 app.use("/api/pneus", pneuRoutes);
 
 app.get("/", (req , res) => {
+    
     res.json({
         message : "fleet Management API is running"
     })
