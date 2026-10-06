@@ -252,6 +252,7 @@ const createTrajet = async (data) => {
     endDate,
   } = validateDates(
     plannedStartDate,
+    
     plannedEndDate
   );
 
