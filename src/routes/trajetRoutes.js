@@ -55,6 +55,13 @@ router.get(
   trajetController.getMyTrajets,
 );
 
+router.put(
+    "/:id/mileage-fuel",
+    authMiddleware,
+    roleMiddleware("CHAUFFEUR"),
+    trajetController.updateMileageAndFuel
+);
+
 // Get one trajet
 router.get("/:id", authMiddleware, trajetController.getTrajetById);
 

@@ -3,24 +3,36 @@ const User = require("../models/User");
 const Camion = require("../models/Camion");
 const Remorque = require("../models/Remorque");
 
+const { calculateTripMetrics } = require("./mileageFuelService");
+
 const {
   checkCamionAvailability,
   checkRemorqueAvailability,
   checkChauffeurAvailability,
 } = require("./availabilityService");
 
+
+// ==========================================
+// VALIDATE DATES
+// ==========================================
+
 const validateDates = (plannedStartDate, plannedEndDate) => {
   const startDate = new Date(plannedStartDate);
   const endDate = new Date(plannedEndDate);
 
-  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+  if (
+    isNaN(startDate.getTime()) ||
+    isNaN(endDate.getTime())
+  ) {
     const error = new Error("Invalid planned dates");
     error.statusCode = 400;
     throw error;
   }
 
   if (startDate >= endDate) {
-    const error = new Error("plannedStartDate must be before plannedEndDate");
+    const error = new Error(
+      "plannedStartDate must be before plannedEndDate"
+    );
 
     error.statusCode = 400;
     throw error;
@@ -32,7 +44,21 @@ const validateDates = (plannedStartDate, plannedEndDate) => {
   };
 };
 
-const validateResources = async (chauffeurId, camionId, remorqueId) => {
+
+// ==========================================
+// VALIDATE RESOURCES
+// ==========================================
+
+const validateResources = async (
+  chauffeurId,
+  camionId,
+  remorqueId
+) => {
+
+  // ==========================
+  // CHAUFFEUR
+  // ==========================
+
   const chauffeur = await User.findById(chauffeurId);
 
   if (!chauffeur) {
@@ -42,18 +68,27 @@ const validateResources = async (chauffeurId, camionId, remorqueId) => {
   }
 
   if (chauffeur.role !== "CHAUFFEUR") {
-    const error = new Error("Selected user is not a chauffeur");
+    const error = new Error(
+      "Selected user is not a chauffeur"
+    );
 
     error.statusCode = 400;
     throw error;
   }
 
   if (!chauffeur.isActive) {
-    const error = new Error("Chauffeur is suspended or inactive");
+    const error = new Error(
+      "Chauffeur is suspended or inactive"
+    );
 
     error.statusCode = 409;
     throw error;
   }
+
+
+  // ==========================
+  // CAMION
+  // ==========================
 
   const camion = await Camion.findById(camionId);
 
@@ -65,17 +100,23 @@ const validateResources = async (chauffeurId, camionId, remorqueId) => {
 
   if (camion.isArchived) {
     const error = new Error("Camion is archived");
-
     error.statusCode = 409;
     throw error;
   }
 
   if (camion.status === "maintenance") {
-    const error = new Error("Camion is under maintenance");
+    const error = new Error(
+      "Camion is under maintenance"
+    );
 
     error.statusCode = 409;
     throw error;
   }
+
+
+  // ==========================
+  // REMORQUE
+  // ==========================
 
   const remorque = await Remorque.findById(remorqueId);
 
@@ -86,14 +127,18 @@ const validateResources = async (chauffeurId, camionId, remorqueId) => {
   }
 
   if (remorque.isArchived) {
-    const error = new Error("Remorque is archived");
+    const error = new Error(
+      "Remorque is archived"
+    );
 
     error.statusCode = 409;
     throw error;
   }
 
   if (remorque.status === "maintenance") {
-    const error = new Error("Remorque is under maintenance");
+    const error = new Error(
+      "Remorque is under maintenance"
+    );
 
     error.statusCode = 409;
     throw error;
@@ -106,58 +151,93 @@ const validateResources = async (chauffeurId, camionId, remorqueId) => {
   };
 };
 
+
+// ==========================================
+// CHECK AVAILABILITY
+// ==========================================
+
 const checkAvailability = async (
   chauffeurId,
   camionId,
   remorqueId,
   startDate,
   endDate,
-  excludeTrajetId = null,
+  excludeTrajetId = null
 ) => {
-  const camionAvailable = await checkCamionAvailability(
-    camionId,
-    startDate,
-    endDate,
-    excludeTrajetId,
-  );
+
+  // ==========================
+  // CAMION
+  // ==========================
+
+  const camionAvailable =
+    await checkCamionAvailability(
+      camionId,
+      startDate,
+      endDate,
+      excludeTrajetId
+    );
 
   if (!camionAvailable) {
-    const error = new Error("Camion is not available during this period");
+    const error = new Error(
+      "Camion is not available during this period"
+    );
 
     error.statusCode = 409;
     throw error;
   }
 
-  const remorqueAvailable = await checkRemorqueAvailability(
-    remorqueId,
-    startDate,
-    endDate,
-    excludeTrajetId,
-  );
+
+  // ==========================
+  // REMORQUE
+  // ==========================
+
+  const remorqueAvailable =
+    await checkRemorqueAvailability(
+      remorqueId,
+      startDate,
+      endDate,
+      excludeTrajetId
+    );
 
   if (!remorqueAvailable) {
-    const error = new Error("Remorque is not available during this period");
+    const error = new Error(
+      "Remorque is not available during this period"
+    );
 
     error.statusCode = 409;
     throw error;
   }
 
-  const chauffeurAvailable = await checkChauffeurAvailability(
-    chauffeurId,
-    startDate,
-    endDate,
-    excludeTrajetId,
-  );
+
+  // ==========================
+  // CHAUFFEUR
+  // ==========================
+
+  const chauffeurAvailable =
+    await checkChauffeurAvailability(
+      chauffeurId,
+      startDate,
+      endDate,
+      excludeTrajetId
+    );
 
   if (!chauffeurAvailable) {
-    const error = new Error("Chauffeur is not available during this period");
+    const error = new Error(
+      "Chauffeur is not available during this period"
+    );
 
     error.statusCode = 409;
     throw error;
   }
 };
 
+
+// ==========================================
+// CREATE TRAJET
+// ==========================================
+
 const createTrajet = async (data) => {
+
   const {
     chauffeurId,
     camionId,
@@ -166,20 +246,31 @@ const createTrajet = async (data) => {
     plannedEndDate,
   } = data;
 
-  const { startDate, endDate } = validateDates(
+
+  const {
+    startDate,
+    endDate,
+  } = validateDates(
     plannedStartDate,
-    plannedEndDate,
+    plannedEndDate
   );
 
-  await validateResources(chauffeurId, camionId, remorqueId);
+
+  await validateResources(
+    chauffeurId,
+    camionId,
+    remorqueId
+  );
+
 
   await checkAvailability(
     chauffeurId,
     camionId,
     remorqueId,
     startDate,
-    endDate,
+    endDate
   );
+
 
   const trajet = await Trajet.create({
     ...data,
@@ -190,21 +281,51 @@ const createTrajet = async (data) => {
   return trajet;
 };
 
+
+// ==========================================
+// GET ALL TRAJETS
+// ==========================================
+
 const getAllTrajets = async () => {
+
   return await Trajet.find()
-    .populate("chauffeurId", "firstName lastName email role")
-    .populate("camionId", "registrationNumber brand model status")
-    .populate("remorqueId", "registrationNumber type status")
+    .populate(
+      "chauffeurId",
+      "firstName lastName email role"
+    )
+    .populate(
+      "camionId",
+      "registrationNumber brand model status"
+    )
+    .populate(
+      "remorqueId",
+      "registrationNumber type status"
+    )
     .sort({
       createdAt: -1,
     });
 };
 
+
+// ==========================================
+// GET TRAJET BY ID
+// ==========================================
+
 const getTrajetById = async (id) => {
+
   const trajet = await Trajet.findById(id)
-    .populate("chauffeurId", "firstName lastName email role")
-    .populate("camionId", "registrationNumber brand model status")
-    .populate("remorqueId", "registrationNumber type status");
+    .populate(
+      "chauffeurId",
+      "firstName lastName email role"
+    )
+    .populate(
+      "camionId",
+      "registrationNumber brand model status"
+    )
+    .populate(
+      "remorqueId",
+      "registrationNumber type status"
+    );
 
   if (!trajet) {
     const error = new Error("Trajet not found");
@@ -215,19 +336,38 @@ const getTrajetById = async (id) => {
   return trajet;
 };
 
+
+// ==========================================
+// GET MY TRAJETS
+// ==========================================
+
 const getMyTrajets = async (chauffeurId) => {
+
   return await Trajet.find({
     chauffeurId,
   })
-    .populate("camionId", "registrationNumber brand model status")
-    .populate("remorqueId", "registrationNumber type status")
+    .populate(
+      "camionId",
+      "registrationNumber brand model status"
+    )
+    .populate(
+      "remorqueId",
+      "registrationNumber type status"
+    )
     .sort({
       plannedStartDate: 1,
     });
 };
 
+
+// ==========================================
+// UPDATE TRAJET / ASSIGNMENT
+// ==========================================
+
 const updateTrajet = async (id, data) => {
-  const existingTrajet = await Trajet.findById(id);
+
+  const existingTrajet =
+    await Trajet.findById(id);
 
   if (!existingTrajet) {
     const error = new Error("Trajet not found");
@@ -235,23 +375,43 @@ const updateTrajet = async (id, data) => {
     throw error;
   }
 
-  const chauffeurId = data.chauffeurId || existingTrajet.chauffeurId;
 
-  const camionId = data.camionId || existingTrajet.camionId;
+  const chauffeurId =
+    data.chauffeurId ||
+    existingTrajet.chauffeurId;
 
-  const remorqueId = data.remorqueId || existingTrajet.remorqueId;
+  const camionId =
+    data.camionId ||
+    existingTrajet.camionId;
+
+  const remorqueId =
+    data.remorqueId ||
+    existingTrajet.remorqueId;
 
   const plannedStartDate =
-    data.plannedStartDate || existingTrajet.plannedStartDate;
+    data.plannedStartDate ||
+    existingTrajet.plannedStartDate;
 
-  const plannedEndDate = data.plannedEndDate || existingTrajet.plannedEndDate;
+  const plannedEndDate =
+    data.plannedEndDate ||
+    existingTrajet.plannedEndDate;
 
-  const { startDate, endDate } = validateDates(
+
+  const {
+    startDate,
+    endDate,
+  } = validateDates(
     plannedStartDate,
-    plannedEndDate,
+    plannedEndDate
   );
 
-  await validateResources(chauffeurId, camionId, remorqueId);
+
+  await validateResources(
+    chauffeurId,
+    camionId,
+    remorqueId
+  );
+
 
   await checkAvailability(
     chauffeurId,
@@ -259,39 +419,180 @@ const updateTrajet = async (id, data) => {
     remorqueId,
     startDate,
     endDate,
-    id,
+    id
   );
 
-  const trajet = await Trajet.findByIdAndUpdate(
-    id,
-    {
-      ...data,
-      plannedStartDate: startDate,
-      plannedEndDate: endDate,
-    },
-    {
-      new: true,
-      runValidators: true,
-    },
-  )
-    .populate("chauffeurId", "firstName lastName email role")
-    .populate("camionId", "registrationNumber brand model status")
-    .populate("remorqueId", "registrationNumber type status");
+
+  const trajet =
+    await Trajet.findByIdAndUpdate(
+      id,
+      {
+        ...data,
+        plannedStartDate: startDate,
+        plannedEndDate: endDate,
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    )
+      .populate(
+        "chauffeurId",
+        "firstName lastName email role"
+      )
+      .populate(
+        "camionId",
+        "registrationNumber brand model status"
+      )
+      .populate(
+        "remorqueId",
+        "registrationNumber type status"
+      );
 
   return trajet;
 };
 
-const deleteTrajet = async (id) => {
-  const trajet = await Trajet.findByIdAndDelete(id);
+
+// ==========================================
+// J5 - UPDATE MILEAGE & FUEL
+// ==========================================
+
+const updateMileageAndFuel = async (
+  trajetId,
+  chauffeurId,
+  data
+) => {
+
+  const {
+    departureMileage,
+    arrivalMileage,
+    fuelConsumed,
+    remarks,
+  } = data;
+
+
+  // ==========================
+  // FIND TRAJET
+  // ==========================
+
+  const trajet =
+    await Trajet.findById(trajetId);
 
   if (!trajet) {
-    const error = new Error("Trajet not found");
+    const error = new Error(
+      "Trajet not found"
+    );
+
+    error.statusCode = 404;
+    throw error;
+  }
+
+
+  // ==========================
+  // CHECK OWNERSHIP
+  // ==========================
+
+  if (
+    trajet.chauffeurId.toString() !==
+    chauffeurId.toString()
+  ) {
+    const error = new Error(
+      "You can only update your own trajet"
+    );
+
+    error.statusCode = 403;
+    throw error;
+  }
+
+
+  // ==========================
+  // REQUIRED FIELDS
+  // ==========================
+
+  if (
+    departureMileage === undefined ||
+    arrivalMileage === undefined ||
+    fuelConsumed === undefined
+  ) {
+    const error = new Error(
+      "Departure mileage, arrival mileage and fuel consumed are required"
+    );
+
+    error.statusCode = 400;
+    throw error;
+  }
+
+
+  // ==========================
+  // CALCULATE METRICS
+  // ==========================
+
+  const {
+    totalDistance,
+    averageConsumption,
+  } = calculateTripMetrics(
+    departureMileage,
+    arrivalMileage,
+    fuelConsumed
+  );
+
+
+  // ==========================
+  // UPDATE TRAJET
+  // ==========================
+
+  trajet.departureMileage =
+    departureMileage;
+
+  trajet.arrivalMileage =
+    arrivalMileage;
+
+  trajet.fuelConsumed =
+    fuelConsumed;
+
+  trajet.totalDistance =
+    totalDistance;
+
+  trajet.averageConsumption =
+    averageConsumption;
+
+
+  if (remarks !== undefined) {
+    trajet.remarks = remarks;
+  }
+
+
+  await trajet.save();
+
+  return trajet;
+};
+
+
+// ==========================================
+// DELETE TRAJET
+// ==========================================
+
+const deleteTrajet = async (id) => {
+
+  const trajet =
+    await Trajet.findByIdAndDelete(id);
+
+  if (!trajet) {
+    const error = new Error(
+      "Trajet not found"
+    );
+
     error.statusCode = 404;
     throw error;
   }
 
   return trajet;
 };
+
+
+// ==========================================
+// EXPORTS
+// ==========================================
 
 module.exports = {
   createTrajet,
@@ -300,4 +601,5 @@ module.exports = {
   getMyTrajets,
   updateTrajet,
   deleteTrajet,
+  updateMileageAndFuel,
 };
