@@ -6,6 +6,7 @@ const camionRoutes = require("./routes/camionRoutes");
 const remorqueRoutes = require("./routes/remorqueRoutes");
 const pneuRoutes = require("./routes/pneuRoutes");
 const trajetRoutes = require("./routes/trajetRoutes");
+const maintenanceRoutes = require("./routes/maintenanceRoutes");
 
 const app = express()
 app.use(express.json());
@@ -14,6 +15,7 @@ app.use("/api/camions", camionRoutes);
 app.use("/api/remorques", remorqueRoutes);
 app.use("/api/pneus", pneuRoutes);
 app.use("/api/trajets", trajetRoutes);
+app.use("/api/maintenances", maintenanceRoutes);
 
 app.get("/", (req , res) => {
 
