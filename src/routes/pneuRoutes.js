@@ -21,6 +21,13 @@ router.get(
     pneuController.getAllPneus
 );
 
+router.put(
+    "/:id/mileage",
+    authMiddleware,
+    roleMiddleware("ADMIN"),
+    pneuController.updatePneuMileage
+);
+
 // Get Pneu by ID
 router.get(
     "/:id",
@@ -43,5 +50,7 @@ router.delete(
     roleMiddleware("ADMIN"),
     pneuController.deletePneu
 );
+
+
 
 module.exports = router;

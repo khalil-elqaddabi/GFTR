@@ -1,4 +1,5 @@
 const pneuService = require("../services/pneuService");
+const pneuMaintenanceService = require("../services/pneuMaintenanceService");
 
 const createPneu = async (req, res, next) => {
     try {
@@ -72,10 +73,28 @@ const deletePneu = async (req, res, next) => {
     }
 };
 
+const updatePneuMileage = async (req, res, next) => {
+    try {
+        const result = await pneuMaintenanceService.updatePneuMileage(
+            req.params.id,
+            req.body.currentMileage
+        );
+
+        res.status(200).json({
+            success: true,
+            message: "Pneu mileage updated successfully",
+            ...result
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     createPneu,
     getAllPneus,
     getPneuById,
     updatePneu,
-    deletePneu
+    deletePneu,
+    updatePneuMileage
 };
