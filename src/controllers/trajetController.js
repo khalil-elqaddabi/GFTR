@@ -1,4 +1,5 @@
 const trajetService = require("../services/trajetService");
+const trajetPdfService = require("../services/trajetPdfService");
 
 const createTrajet = async (req, res, next) => {
   try {
@@ -132,6 +133,30 @@ const deleteTrajet = async (req, res, next) => {
   }
 };
 
+const downloadTrajetPdf = async (req, res, next) => {
+  try {
+    const doc = await trajetPdfService.generateTrajetPdf(
+      req.params.id,
+      {
+        userId: req.user.userId,
+        role: req.user.role,
+      }
+    );
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="ordre-mission-${req.params.id}.pdf"`
+    );
+
+    doc.pipe(res);
+    doc.end();
+  } catch (error) {
+    next(error);
+  }
+};
+
+
 module.exports = {
   createTrajet,
   getAllTrajets,
@@ -141,4 +166,5 @@ module.exports = {
   deleteTrajet,
   updateMileageAndFuel,
   updateTrajetStatus,
+  downloadTrajetPdf,
 };

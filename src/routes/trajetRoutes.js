@@ -68,6 +68,11 @@ router.put(
     roleMiddleware("CHAUFFEUR"),
     trajetController.updateMileageAndFuel
 );
+router.get(
+  "/:id/pdf",
+  authMiddleware,
+  trajetController.downloadTrajetPdf
+);
 
 // Get one trajet
 router.get("/:id", authMiddleware, trajetController.getTrajetById);
