@@ -55,6 +55,13 @@ router.get(
   trajetController.getMyTrajets,
 );
 
+router.patch(
+  "/:id/status",
+  authMiddleware,
+  trajetController.updateTrajetStatus
+);
+
+
 router.put(
     "/:id/mileage-fuel",
     authMiddleware,

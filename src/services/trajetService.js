@@ -40,39 +40,38 @@ const validateDates = (plannedStartDate, plannedEndDate) => {
 };
 
 const checkUnresolvedMaintenance = async (resourceType, resourceId) => {
-    const resourceField =
-        resourceType === "CAMION" ? "camionId" : "remorqueId";
+  const resourceField = resourceType === "CAMION" ? "camionId" : "remorqueId";
 
-    // Check unresolved maintenance records
-    const unresolvedMaintenance = await Maintenance.findOne({
-        [resourceField]: resourceId,
-        status: { $in: ["pending", "in_progress"] }
-    });
+  // Check unresolved maintenance records
+  const unresolvedMaintenance = await Maintenance.findOne({
+    [resourceField]: resourceId,
+    status: { $in: ["pending", "in_progress"] },
+  });
 
-    if (unresolvedMaintenance) {
-        const error = new Error(
-            `${resourceType} has unresolved maintenance and cannot be assigned`
-        );
-        error.statusCode = 409;
-        throw error;
-    }
-
-    // Check maintenance mileage alerts
-    const maintenanceRuleService = require("./maintenanceRuleService");
-
-    const result = await maintenanceRuleService.checkMaintenanceRequired(
-        resourceType,
-        resourceId
+  if (unresolvedMaintenance) {
+    const error = new Error(
+      `${resourceType} has unresolved maintenance and cannot be assigned`,
     );
+    error.statusCode = 409;
+    throw error;
+  }
 
-    if (result.maintenanceRequired) {
-        const error = new Error(
-            `${resourceType} requires maintenance before assignment`
-        );
-        error.statusCode = 409;
-        error.details = result.alerts;
-        throw error;
-    }
+  // Check maintenance mileage alerts
+  const maintenanceRuleService = require("./maintenanceRuleService");
+
+  const result = await maintenanceRuleService.checkMaintenanceRequired(
+    resourceType,
+    resourceId,
+  );
+
+  if (result.maintenanceRequired) {
+    const error = new Error(
+      `${resourceType} requires maintenance before assignment`,
+    );
+    error.statusCode = 409;
+    error.details = result.alerts;
+    throw error;
+  }
 };
 
 const checkWornPneus = async (camionId) => {
@@ -83,7 +82,7 @@ const checkWornPneus = async (camionId) => {
 
   if (wornPneu) {
     const error = new Error(
-      `Camion cannot be assigned: pneu ${wornPneu.serialNumber} must be replaced`
+      `Camion cannot be assigned: pneu ${wornPneu.serialNumber} must be replaced`,
     );
     error.statusCode = 409;
     throw error;
@@ -138,8 +137,6 @@ const validateResources = async (chauffeurId, camionId, remorqueId) => {
 
     error.statusCode = 409;
     throw error;
-    
-    
   }
   await checkUnresolvedMaintenance("CAMION", camionId);
   await checkWornPneus(camionId);
@@ -238,11 +235,11 @@ const checkAvailability = async (
 // CREATE TRAJET
 
 const createTrajet = async (data) => {
-   if (!data || typeof data !== "object") {
-        const error = new Error("Request body is missing or invalid");
-        error.statusCode = 400;
-        throw error;
-    }
+  if (!data || typeof data !== "object") {
+    const error = new Error("Request body is missing or invalid");
+    error.statusCode = 400;
+    throw error;
+  }
   const {
     chauffeurId,
     camionId,
@@ -326,6 +323,13 @@ const updateTrajet = async (id, data) => {
   if (!existingTrajet) {
     const error = new Error("Trajet not found");
     error.statusCode = 404;
+    throw error;
+  }
+  if (data.status !== undefined) {
+    const error = new Error(
+      "Update status using the dedicated status endpoint",
+    );
+    error.statusCode = 400;
     throw error;
   }
 
@@ -422,27 +426,26 @@ const updateMileageAndFuel = async (trajetId, chauffeurId, data) => {
     arrivalMileage,
     fuelConsumed,
   );
-  
+
   const camion = await Camion.findById(trajet.camionId);
 
-if (!camion) {
+  if (!camion) {
     const error = new Error("Camion not found");
     error.statusCode = 404;
     throw error;
-}
+  }
 
-if (arrivalMileage < camion.currentMileage) {
+  if (arrivalMileage < camion.currentMileage) {
     const error = new Error(
-        "Arrival mileage cannot be less than camion current mileage"
+      "Arrival mileage cannot be less than camion current mileage",
     );
     error.statusCode = 400;
     throw error;
-}
+  }
 
-camion.currentMileage = arrivalMileage;
+  camion.currentMileage = arrivalMileage;
 
-await camion.save();
-
+  await camion.save();
 
   // UPDATE TRAJET
 
@@ -480,6 +483,70 @@ const deleteTrajet = async (id) => {
   return trajet;
 };
 
+const updateTrajetStatus = async (id, newStatus, user) => {
+  const allowedStatuses = ["à faire", "en cours", "terminé"];
+
+  if (!allowedStatuses.includes(newStatus)) {
+    const error = new Error("Invalid trajet status");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const trajet = await Trajet.findById(id);
+
+  if (!trajet) {
+    const error = new Error("Trajet not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const currentStatus = trajet.status;
+
+  if (user.role === "CHAUFFEUR") {
+    // Le chauffeur ne peut modifier que ses propres trajets
+    if (trajet.chauffeurId.toString() !== user.userId.toString()) {
+      const error = new Error("You can only update your own trajet");
+      error.statusCode = 403;
+      throw error;
+    }
+
+    const nextStatus = {
+      "à faire": "en cours",
+      "en cours": "terminé",
+    };
+
+    if (nextStatus[currentStatus] !== newStatus) {
+      const error = new Error("Invalid status transition");
+      error.statusCode = 400;
+      throw error;
+    }
+  } else if (user.role !== "ADMIN") {
+    const error = new Error("Forbidden");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  trajet.status = newStatus;
+  await trajet.save();
+
+  await trajet.populate([
+    {
+      path: "chauffeurId",
+      select: "firstName lastName email role",
+    },
+    {
+      path: "camionId",
+      select: "registrationNumber brand model status",
+    },
+    {
+      path: "remorqueId",
+      select: "registrationNumber type status",
+    },
+  ]);
+
+  return trajet;
+};
+
 // EXPORTS
 
 module.exports = {
@@ -490,4 +557,5 @@ module.exports = {
   updateTrajet,
   deleteTrajet,
   updateMileageAndFuel,
+  updateTrajetStatus,
 };

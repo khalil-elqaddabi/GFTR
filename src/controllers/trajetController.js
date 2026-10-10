@@ -78,6 +78,28 @@ const updateTrajet = async (req, res, next) => {
     next(error);
   }
 };
+
+const updateTrajetStatus = async (req, res, next) => {
+  try {
+    const trajet = await trajetService.updateTrajetStatus(
+      req.params.id,
+      req.body.status,
+      {
+        userId: req.user.userId,
+        role: req.user.role,
+      },
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Trajet status updated successfully",
+      trajet,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const updateMileageAndFuel = async (req, res, next) => {
   try {
     const trajet = await trajetService.updateMileageAndFuel(
@@ -118,4 +140,5 @@ module.exports = {
   updateTrajet,
   deleteTrajet,
   updateMileageAndFuel,
+  updateTrajetStatus,
 };
