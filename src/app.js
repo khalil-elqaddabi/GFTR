@@ -1,33 +1,34 @@
 const express = require("express");
 const errorHandler = require("./middlewares/errorHandler");
-const authRoutes = require("./routes/authRoutes");
-const testRoutes = require("./routes/testRoutes");
-const camionRoutes = require("./routes/camionRoutes");
-const remorqueRoutes = require("./routes/remorqueRoutes");
-const pneuRoutes = require("./routes/pneuRoutes");
-const trajetRoutes = require("./routes/trajetRoutes");
-const maintenanceRoutes = require("./routes/maintenanceRoutes");
-const maintenanceRuleRoutes = require("./routes/maintenanceRuleRoutes");
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./config/swagger");
+const testRoutes = require("./routes/testRoutes");
+// b2
+const apiVersionMiddleware = require("./middlewares/apiVersionMiddleware");
+const v1Routes = require("./routes/v1Routes");
+const v2Routes = require("./routes/v2Routes");
 
 const app = express();
 app.use(express.json());
-app.use("/api/auth", authRoutes);
-app.use("/api/camions", camionRoutes);
-app.use("/api/remorques", remorqueRoutes);
-app.use("/api/pneus", pneuRoutes);
-app.use("/api/trajets", trajetRoutes);
-app.use("/api/maintenances", maintenanceRoutes);
-app.use("/api/maintenance-rules", maintenanceRuleRoutes);
+
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+// API v1 - versioned routes
+app.use("/api/v1", apiVersionMiddleware("1.0.0"), v1Routes);
+// API v2
+app.use("/api/v2", apiVersionMiddleware("2.0.0"), v2Routes);
+
+// Legacy routes - backward compatibility with Brief 1
+app.use("/api", apiVersionMiddleware("1.0.0"), v1Routes);
 
 app.get("/", (req, res) => {
   res.json({
     message: "fleet Management API is running",
   });
 });
-app.use(errorHandler);
+
 app.use("/api/test", testRoutes);
+
+app.use(errorHandler);
 
 module.exports = app;
