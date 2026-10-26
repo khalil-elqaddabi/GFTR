@@ -84,6 +84,22 @@ const trajetSchema = new mongoose.Schema(
             type: String,
             trim: true,
             default: ""
+        },
+        
+        bucket: {
+            type: String,
+            default: null
+        },
+
+        s3Key: {
+            type: String,
+            default: null
+        },
+
+        sizeBytes: {
+            type: Number,
+            default: null,
+            min: 0
         }
     },
     {

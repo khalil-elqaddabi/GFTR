@@ -1,5 +1,8 @@
 const trajetService = require("../services/trajetService");
 const trajetPdfService = require("../services/trajetPdfService");
+const Trajet = require("../models/Trajet");
+const storageService = require("../services/storageService");
+const missionOrderStorageService = require("../services/missionOrderStorageService");
 
 const createTrajet = async (req, res, next) => {
   try {
@@ -135,18 +138,15 @@ const deleteTrajet = async (req, res, next) => {
 
 const downloadTrajetPdf = async (req, res, next) => {
   try {
-    const doc = await trajetPdfService.generateTrajetPdf(
-      req.params.id,
-      {
-        userId: req.user.userId,
-        role: req.user.role,
-      }
-    );
+    const doc = await trajetPdfService.generateTrajetPdf(req.params.id, {
+      userId: req.user.userId,
+      role: req.user.role,
+    });
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="ordre-mission-${req.params.id}.pdf"`
+      `attachment; filename="ordre-mission-${req.params.id}.pdf"`,
     );
 
     doc.pipe(res);
@@ -156,6 +156,54 @@ const downloadTrajetPdf = async (req, res, next) => {
   }
 };
 
+const getMissionOrderUrl = async (req, res, next) => {
+  try {
+    const trajet = await Trajet.findById(req.params.id);
+
+    if (!trajet) {
+      return res.status(404).json({
+        success: false,
+        message: "Trajet not found",
+      });
+    }
+
+    const userId = req.user.userId?.toString();
+    const role = req.user.role;
+
+    const isAdmin = role === "ADMIN";
+    const isAssignedChauffeur =
+      role === "CHAUFFEUR" && trajet.chauffeurId.toString() === userId;
+
+    if (!isAdmin && !isAssignedChauffeur) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to access this mission order",
+      });
+    }
+
+    if (!trajet.bucket || !trajet.s3Key) {
+      await missionOrderStorageService.storeMissionOrderPdf(trajet._id, {
+        userId: req.user.userId,
+        role: req.user.role,
+      });
+
+      trajet.bucket = process.env.S3_BUCKET || "fleettrack-documents";
+      trajet.s3Key = `mission-orders/${trajet._id}/ordre-mission-${trajet._id}.pdf`;
+    }
+    const url = await storageService.createPresignedDownloadUrl(
+      trajet.s3Key,
+      15 * 60,
+    );
+
+    return res.status(200).json({
+      success: true,
+      url,
+      expiresIn: 900,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 module.exports = {
   createTrajet,
@@ -167,4 +215,5 @@ module.exports = {
   updateMileageAndFuel,
   updateTrajetStatus,
   downloadTrajetPdf,
+  getMissionOrderUrl,
 };

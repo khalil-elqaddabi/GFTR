@@ -102,4 +102,19 @@ if (
   return doc;
 };
 
-module.exports = { generateTrajetPdf };
+
+const generateTrajetPdfBuffer = async (id, user) => {
+  const doc = await generateTrajetPdf(id, user);
+
+  const chunks = [];
+
+  return new Promise((resolve, reject) => {
+    doc.on("data", (chunk) => chunks.push(chunk));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+    doc.end();
+  });
+};
+
+
+module.exports = { generateTrajetPdf, generateTrajetPdfBuffer, };
