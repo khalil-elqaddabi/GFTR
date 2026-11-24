@@ -1,7 +1,8 @@
 const express = require("express");
 const errorHandler = require("./middlewares/errorHandler");
 const authRoutes = require("./routes/authRoutes");
-const testRoutes = require("./routes/testRoutes");
+const userRoutes = require("./routes/userRoutes");
+// const testRoutes = require("./routes/testRoutes");
 const camionRoutes = require("./routes/camionRoutes");
 const remorqueRoutes = require("./routes/remorqueRoutes");
 const pneuRoutes = require("./routes/pneuRoutes");
@@ -10,8 +11,16 @@ const maintenanceRoutes = require("./routes/maintenanceRoutes");
 const maintenanceRuleRoutes = require("./routes/maintenanceRuleRoutes");
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./config/swagger");
+const cors = require("cors");
 
 const app = express();
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
 app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/camions", camionRoutes);
@@ -21,6 +30,7 @@ app.use("/api/trajets", trajetRoutes);
 app.use("/api/maintenances", maintenanceRoutes);
 app.use("/api/maintenance-rules", maintenanceRuleRoutes);
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use("/api/users", userRoutes);
 
 app.get("/", (req, res) => {
   res.json({
@@ -28,6 +38,6 @@ app.get("/", (req, res) => {
   });
 });
 app.use(errorHandler);
-app.use("/api/test", testRoutes);
+// app.use("/api/test", testRoutes);
 
 module.exports = app;

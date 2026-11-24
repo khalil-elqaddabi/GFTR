@@ -19,6 +19,7 @@ const options = {
     ],
     tags: [
       { name: "Authentication" },
+      { name: "Users" },
       { name: "Camions" },
       { name: "Remorques" },
       { name: "Pneus" },
