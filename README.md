@@ -140,7 +140,7 @@ Les tests automatisés couvrent notamment les calculs de kilométrage et de cons
 
 ## Authentification
 
-Les routes protégées nécessitent un jeton d'accès JWT.
+Les routes protégées nécessitent un jeton d'accès JWT, valable 15 minutes. Le jeton de rafraîchissement est valable 30 jours. Il n’existe pas de route de déconnexion serveur. La connexion et le rafraîchissement refusent un compte suspendu; le middleware relit le rôle et l’état du compte en base pour les requêtes protégées.
 
 Dans Postman, ajouter l'en-tête suivant aux requêtes authentifiées :
 
@@ -157,15 +157,33 @@ Les autorisations dépendent du rôle associé à l'utilisateur et aux routes.
 | POST | `/api/auth/register` | Inscription |
 | POST | `/api/auth/login` | Connexion |
 | POST | `/api/auth/refresh` | Renouvellement du jeton |
-| `/` | `GET /` | Vérification de l'API |
-| `/api/camions` | CRUD | Gestion des camions |
+| GET | `/` | Vérification de l'API |
+| GET, POST | `/api/camions` | Liste et création (Admin) |
+| GET, PUT, DELETE | `/api/camions/:id` | Détail, modification, suppression définitive (Admin) |
+| GET | `/api/camions/count` | Nombre de camions non archivés (Admin) |
+| GET | `/api/users` | Liste des utilisateurs (Admin, sans mot de passe) |
+| POST | `/api/users/chauffeurs` | Création d’un Chauffeur (Admin) |
+| PATCH | `/api/users/:id/status` | Suspension/réactivation d’un Chauffeur (Admin) |
+| GET | `/api/users/chauffeurs/count` | Nombre de Chauffeurs inscrits (Admin) |
 | `/api/remorques` | CRUD | Gestion des remorques |
 | `/api/pneus` | CRUD | Gestion des pneus |
-| `/api/trajets` | CRUD | Gestion des trajets |
+| GET, POST | `/api/trajets` | Liste et création des trajets (Admin) |
+| GET | `/api/trajets/mes-trajets` | Trajets du Chauffeur connecté |
 | `/api/maintenances` | CRUD | Gestion des maintenances |
 | `/api/maintenance-rules` | CRUD | Gestion des règles de maintenance |
 
-Les méthodes HTTP disponibles et les rôles autorisés dépendent de la configuration effective des routes du projet.
+Les autres méthodes et rôles autorisés sont décrits dans les routes et dans OpenAPI (`/api-docs`).
+
+### Routes utilisées par le frontend Sprint 3
+
+- `GET /api/users` (Admin) renvoie les utilisateurs sans champ mot de passe.
+- `POST /api/users/chauffeurs` (Admin) crée un Chauffeur avec `firstName`, `lastName`, `email` et `password`.
+- `PATCH /api/users/:id/status` (Admin) modifie `isActive` pour un Chauffeur.
+- `GET /api/users/chauffeurs/count` renvoie le nombre de Chauffeurs.
+- `GET /api/camions` et `GET /api/camions/:id` nécessitent un rôle Admin. `DELETE /api/camions/:id` supprime définitivement le camion ; il ne s’agit pas d’un archivage.
+- `GET /api/trajets/mes-trajets` renvoie uniquement les trajets liés à l’identifiant du compte présent dans le jeton.
+
+Le middleware vérifie la signature JWT puis recharge le compte et son rôle en base. Un compte suspendu reçoit 401 pour les connexions protégées, y compris avec un access token émis avant la suspension. Le rafraîchissement rejette aussi les comptes suspendus. CORS autorise `http://localhost:5173` (Vite) et le backend écoute par défaut sur `http://localhost:5000`.
 
 ## Auteur
 
