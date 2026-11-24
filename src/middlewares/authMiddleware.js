@@ -1,38 +1,31 @@
 const jwt = require("jsonwebtoken");
+const User = require("../models/User");
 
-const authMiddleware = (req, res, next) => {
+const authMiddleware = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
+        const tokenParts = authHeader ? authHeader.split(" ") : [];
 
-        if (!authHeader) {
+        if (tokenParts.length !== 2 || tokenParts[0] !== "Bearer") {
             return res.status(401).json({
                 success: false,
-                message: "Authorization header is required"
+                message: "A valid Bearer access token is required"
             });
         }
 
-        const token = authHeader.split(" ")[1];
+        const decoded = jwt.verify(tokenParts[1], process.env.JWT_ACCESS_SECRET);
+        const user = await User.findById(decoded.userId).select("role isActive");
 
-        if (!token) {
+        if (!user || !user.isActive) {
             return res.status(401).json({
                 success: false,
-                message: "Access token is required"
+                message: "User account is inactive or no longer available"
             });
         }
 
-        const decoded = jwt.verify(
-            token,
-            process.env.JWT_ACCESS_SECRET
-        );
-
-        req.user = decoded;
-
+        req.user = { userId: user._id, role: user.role };
         next();
-
     } catch (error) {
-        console.log("JWT ERROR:", error.name);
-        console.log("JWT MESSAGE:", error.message);
-
         return res.status(401).json({
             success: false,
             message: "Invalid or expired access token"
