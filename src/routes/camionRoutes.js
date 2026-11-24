@@ -64,7 +64,14 @@ router.post(
 router.get(
     "/",
     authMiddleware,
+    roleMiddleware("ADMIN"),
     camionController.getAllCamions
+);
+router.get(
+    "/count",
+    authMiddleware,
+    roleMiddleware("ADMIN"),
+    camionController.getCamionsCount
 );
 
 /**
@@ -93,6 +100,7 @@ router.get(
 router.get(
     "/:id",
     authMiddleware,
+    roleMiddleware("ADMIN"),
     camionController.getCamionById
 );
 
